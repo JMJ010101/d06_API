@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>포켓몬 도감</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri@latest/dist/galmuri.css"> <!-- 도트 한글 글꼴 (안 열리면 기본 글꼴로 보임) -->
+<style>
+  :root { --c0: #0f380f; --c1: #306230; --c2: #8bac0f; --c3: #9bbc0f; --c4: #c4d96a; --warn: #8a1c1c; }
+  * { box-sizing: border-box; }
+  body { font-family: "Galmuri11", "Galmuri9", "DotGothic16", "Malgun Gothic", monospace; background: var(--c2); margin: 0; padding: 20px 14px 32px; color: var(--c0); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: none; }
+  body::after { content: ""; position: fixed; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(15,56,15,.07) 0 1px, transparent 1px 3px); }
+  img { image-rendering: pixelated; }
+  main { max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 24px; margin: 0 0 14px; padding: 10px 14px; background: var(--c0); color: var(--c3); border: 4px solid var(--c0); box-shadow: 4px 4px 0 var(--c1); letter-spacing: 2px; }
+  h1::before { content: "▶ "; animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  h2 { font-size: 14px; margin: 0 0 10px; padding-bottom: 6px; border-bottom: 4px double var(--c1); }
+  form { display: flex; gap: 8px; margin-bottom: 14px; }
+  input { flex: 1; min-width: 0; font: inherit; font-size: 15px; padding: 10px; border: 4px solid var(--c0); border-radius: 0; background: var(--c4); color: var(--c0); box-shadow: inset 3px 3px 0 var(--c3); }
+  input::placeholder { color: var(--c1); }
+  input:focus { outline: 3px dashed var(--c0); outline-offset: 2px; }
+  button { font: inherit; font-size: 14px; padding: 10px 14px; border: 4px solid var(--c0); border-radius: 0; background: var(--c0); color: var(--c3); cursor: pointer; box-shadow: 4px 4px 0 var(--c1); }
+  button:hover:not(:disabled) { background: var(--c3); color: var(--c0); }
+  button:active:not(:disabled) { transform: translate(4px, 4px); box-shadow: none; }
+  button:focus-visible { outline: 3px dashed var(--c0); outline-offset: 2px; }
+  button.ghost { background: var(--c4); color: var(--c0); }
+  button:disabled { opacity: .45; cursor: default; }
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+  @media (max-width: 700px) { .layout { grid-template-columns: 1fr; } }
+  .card { background: var(--c3); border: 4px solid var(--c0); padding: 16px; box-shadow: 6px 6px 0 var(--c1); }
+  .list { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+  .list button { background: var(--c4); color: var(--c0); border: 3px solid var(--c0); padding: 6px 4px; text-align: center; font-size: 12px; box-shadow: 3px 3px 0 var(--c1); }
+  .list button:hover { background: var(--c0); color: var(--c3); }
+  .list button:hover small { color: var(--c2); }
+  .list img { width: 72px; height: 72px; display: block; margin: 0 auto 2px; }
+  .list small { color: var(--c1); display: block; }
+  .more { margin-top: 12px; width: 100%; }
+  .detail { text-align: center; }
+  .detail img { width: 192px; height: 192px; background: var(--c4); border: 4px solid var(--c0); box-shadow: inset 4px 4px 0 var(--c3); }
+  .name { font-size: 22px; margin: 8px 0 0; }
+  .sub { font-size: 13px; color: var(--c1); margin: 4px 0 0; }
+  .pill { display: inline-block; padding: 1px 10px; border: 3px solid var(--c0); background: var(--c0); color: var(--c3); font-size: 12px; margin: 6px 3px 0; }
+  .stats { text-align: left; margin-top: 14px; }
+  .stat { display: grid; grid-template-columns: 68px 32px 1fr; gap: 6px; align-items: center; font-size: 12px; margin: 5px 0; }
+  .bar { background: var(--c4); border: 3px solid var(--c0); height: 14px; }
+  .bar i { display: block; height: 100%; background: repeating-linear-gradient(90deg, var(--c0) 0 6px, transparent 6px 8px); }
+  .flavor { margin-top: 12px; padding: 10px; border: 3px solid var(--c0); background: var(--c4); font-size: 13px; line-height: 1.7; text-align: left; }
+  .loading { color: var(--c1); margin: 0; }
+  .loading::after { content: "..."; display: inline-block; width: 1.5em; text-align: left; animation: dots 1.2s steps(4) infinite; overflow: hidden; vertical-align: bottom; }
+  @keyframes dots { from { width: 0; } to { width: 1.5em; } }
+  .error { color: var(--warn); margin: 0; font-weight: bold; }
+  .api-box { margin-top: 16px; background: var(--c0); color: var(--c3); border: 4px solid var(--c0); box-shadow: 6px 6px 0 var(--c1); padding: 14px; font-size: 12px; word-break: break-all; }
+  .api-box a { color: var(--c4); }
+  .api-box ul { margin: 8px 0 0; padding-left: 18px; }
+  .api-box li { margin-bottom: 8px; }
+  footer { margin-top: 18px; font-size: 11px; color: var(--c0); text-align: center; line-height: 1.7; }
+  footer a { color: var(--c0); }
+</style>
+</head>
+<body>
+<main>
+  <h1>포켓몬 도감</h1>
+
+  <form id="form">
+    <input id="query" type="text" placeholder="한글 이름, 영어 이름, 번호 (예: 피카츄, pikachu, 25)" aria-label="포켓몬 검색" required>
+    <button type="submit">검색</button>
+  </form>
+
+  <div class="layout">
+    <section class="card" id="card-list"><h2>도감 목록</h2><p class="loading">목록 불러오는 중…</p></section>
+    <section class="card detail" id="card-detail"><h2>포켓몬 정보</h2><p class="sub">목록에서 고르거나 검색해 보세요.</p></section>
+  </div>
+
+  <div class="api-box">
+    <strong>🔌 이 화면이 쓰는 API</strong>
+    <ul id="api-list"></ul>
+  </div>
+
+  <footer>
+    Data from <a href="https://pokeapi.co/" target="_blank" rel="noopener">PokéAPI</a> ·
+    이미지: <a href="https://github.com/PokeAPI/sprites" target="_blank" rel="noopener">PokeAPI/sprites</a><br>
+    포켓몬은 Nintendo / Creatures Inc. / GAME FREAK inc.의 상표입니다.
+  </footer>
+</main>
+
+<script>
+  const API = {
+    list: "https://pokeapi.co/api/v2/pokemon",           // 🔌 목록: ?limit=&offset=
+    pokemon: "https://pokeapi.co/api/v2/pokemon",        // 🔌 상세: /{이름 또는 번호}
+    species: "https://pokeapi.co/api/v2/pokemon-species", // 🔌 한국어 이름·설명: /{번호}
+    graphql: "https://beta.pokeapi.co/graphql/v1beta",   // 🔌 한글 이름 검색: 전체 도감에서 한글 이름으로 번호 찾기 (POST)
+    sprite: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon", // 🔌 도트 그림(목록·상세 공용): /{번호}.png
+  };
+  const PAGE = 24; // 한 번에 보여 줄 개수
+
+  const TYPE_KO = {
+    normal: "노말", fire: "불꽃", water: "물", electric: "전기", grass: "풀", ice: "얼음",
+    fighting: "격투", poison: "독", ground: "땅", flying: "비행", psychic: "에스퍼", bug: "벌레",
+    rock: "바위", ghost: "고스트", dragon: "드래곤", dark: "악", steel: "강철", fairy: "페어리",
+  };
+  const STAT_KO = { hp: "HP", attack: "공격", defense: "방어", "special-attack": "특수공격", "special-defense": "특수방어", speed: "스피드" };
+
+  const $ = id => document.getElementById(id);
+
+  // ---------- 공통 도우미 ----------
+  const apiRows = {};
+  function showUrl(key, label, url) {
+    let li = apiRows[key];
+    if (!li) { li = apiRows[key] = document.createElement("li"); $("api-list").appendChild(li); }
+    const code = document.createElement("code");
+    code.textContent = url;
+    const a = document.createElement("a");
+    a.href = url; a.target = "_blank"; a.rel = "noopener";
+    a.textContent = "새 탭에서 원본 JSON 보기";
+    li.replaceChildren(label, document.createElement("br"), code, document.createElement("br"), a);
+  }
+
+  async function getJson(url) {
+    const res = await fetch(url, { signal: AbortSignal.timeout(10000) }); // 🔌 API 호출
+    if (!res.ok) throw new Error(res.status === 404 ? "찾을 수 없어요" : "HTTP " + res.status);
+    return res.json();
+  }
+
+  // 한글 이름 → 포켓몬 번호 (전체 도감에서 검색). 정확히 같은 이름을 먼저, 없으면 이름에 글자가 들어간 첫 번째
+  async function findKoId(name) {
+    const query = `query($q: String!) {
+  pokemon_v2_pokemonspeciesname(where: {pokemon_v2_language: {name: {_eq: "ko"}}, name: {_ilike: $q}}, order_by: {pokemon_species_id: asc}, limit: 20) { name pokemon_species_id }
+}`;
+    showUrl("kosearch", `한글 이름 검색 (POST, "${name}")`, API.graphql);
+    const res = await fetch(API.graphql, { // 🔌 API 호출
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query, variables: { q: `%${name}%` } }),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const body = await res.json();
+    if (body.errors) throw new Error("검색 오류");
+    const rows = body.data.pokemon_v2_pokemonspeciesname;
+    const hit = rows.find(r => r.name === name) || rows[0];
+    return hit ? hit.pokemon_species_id : null;
+  }
+
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+  function draw(cardId, title, ...nodes) {
+    $(cardId).replaceChildren(el("h2", "", title), ...nodes);
+  }
+  const idFromUrl = url => Number(url.split("/").filter(Boolean).pop());
+  const pad = n => "#" + String(n).padStart(4, "0");
+
+  // ---------- 카드 1: 도감 목록 (순서대로, 더 보기) ----------
+  let offset = 0;
+  const grid = el("div", "list");
+  const moreBtn = el("button", "more ghost", "더 보기 ▼");
+  const listMsg = el("p", "loading");
+
+  async function loadList() {
+    const url = `${API.list}?limit=${PAGE}&offset=${offset}`;
+    showUrl("list", "도감 목록", url);
+    moreBtn.disabled = true;
+    listMsg.className = "loading";
+    listMsg.textContent = "목록 불러오는 중…";
+    draw("card-list", "도감 목록", grid, listMsg, moreBtn);
+    try {
+      const data = await getJson(url);
+      for (const p of data.results) {
+        const id = idFromUrl(p.url);
+        const b = el("button");
+        const img = el("img"); img.src = `${API.sprite}/${id}.png`; img.alt = p.name; img.loading = "lazy";
+        const nameSpan = el("span", "", p.name); // 한글 이름이 도착하면 바뀜 (실패하면 영어 이름 그대로)
+        b.append(img, nameSpan, el("small", "", pad(id)));
+        b.onclick = () => loadDetail(String(id));
+        grid.appendChild(b);
+        fillKoName(id, nameSpan);
+      }
+      offset += PAGE;
+      listMsg.textContent = "";
+      moreBtn.disabled = offset >= data.count;
+    } catch (err) {
+      listMsg.className = "error";
+      listMsg.textContent = `😢 목록을 불러오지 못했어요. (${err.message})`;
+      moreBtn.disabled = false; // 다시 눌러 재시도
+    }
+  }
+  moreBtn.onclick = loadList;
+
+  // 목록의 한글 이름: 포켓몬마다 따로 불러서, 하나가 실패해도 나머지는 한글로 보임
+  const koNames = new Map(); // 번호 → 한글 이름 (검색에도 씀)
+  async function fillKoName(id, span) {
+    const url = `${API.species}/${id}`;
+    showUrl("koname", "목록의 한글 이름 (포켓몬마다 1번씩, 마지막 주소)", url);
+    try {
+      const sp = await getJson(url);
+      const ko = sp.names.find(n => n.language.name === "ko");
+      if (ko) { span.textContent = ko.name; koNames.set(id, ko.name); }
+    } catch (err) {
+      span.title = "한글 이름을 불러오지 못했어요"; // 영어 이름을 그대로 둠
+    }
+  }
+
+  // ---------- 카드 2: 포켓몬 정보 (검색/클릭) ----------
+  let token = 0; // 빠르게 연달아 눌렀을 때 늦게 온 응답이 덮어쓰지 않게
+  async function loadDetail(query) {
+    const my = ++token;
+    const q = query.trim().toLowerCase();
+    const pUrl = `${API.pokemon}/${encodeURIComponent(q)}`;
+    showUrl("pokemon", "포켓몬 정보", pUrl);
+    draw("card-detail", "포켓몬 정보", el("p", "loading", "포켓몬 찾는 중…"));
+    let p;
+    try {
+      p = await getJson(pUrl);
+    } catch (err) {
+      if (my !== token) return;
+      draw("card-detail", "포켓몬 정보", el("p", "error", `😢 "${query}" 포켓몬을 불러오지 못했어요. (${err.message})`),
+        el("p", "sub", "한글 이름, 영어 이름(pikachu), 번호(25)로 검색해 보세요."));
+      return;
+    }
+    if (my !== token) return;
+
+    const nodes = [];
+    const img = el("img"); img.src = `${API.sprite}/${p.id}.png`; img.alt = p.name;
+    const nameEl = el("p", "name", p.name);
+    nodes.push(img, nameEl, el("p", "sub", pad(p.id)));
+    const types = el("div");
+    for (const t of p.types) types.append(el("span", "pill", TYPE_KO[t.type.name] || t.type.name));
+    nodes.push(types);
+    nodes.push(el("p", "sub", `키 ${p.height / 10}m · 몸무게 ${p.weight / 10}kg`));
+    const stats = el("div", "stats");
+    for (const s of p.stats) {
+      const bar = el("div", "bar"); const fill = el("i"); fill.style.width = Math.min(100, s.base_stat / 2) + "%"; bar.append(fill);
+      const row = el("div", "stat");
+      row.append(el("span", "", STAT_KO[s.stat.name] || s.stat.name), el("b", "", s.base_stat), bar);
+      stats.append(row);
+    }
+    nodes.push(stats);
+    const flavor = el("p", "flavor");
+    nodes.push(flavor);
+    draw("card-detail", "포켓몬 정보", ...nodes);
+
+    // 한국어 이름·설명은 따로 불러서, 실패해도 위 정보는 그대로 보임
+    const sUrl = `${API.species}/${p.id}`;
+    showUrl("species", "한국어 이름·설명", sUrl);
+    flavor.className = "flavor loading"; flavor.textContent = "한국어 설명 불러오는 중…";
+    try {
+      const sp = await getJson(sUrl);
+      if (my !== token) return;
+      const ko = sp.names.find(n => n.language.name === "ko");
+      if (ko) nameEl.textContent = `${ko.name} (${p.name})`;
+      const txt = sp.flavor_text_entries.find(f => f.language.name === "ko");
+      flavor.className = "flavor";
+      flavor.textContent = txt ? txt.flavor_text.replace(/\s+/g, " ") : "한국어 설명이 없어요.";
+    } catch (err) {
+      if (my !== token) return;
+      flavor.className = "flavor error";
+      flavor.textContent = `😢 한국어 설명을 불러오지 못했어요. (${err.message})`;
+    }
+  }
+
+  $("form").addEventListener("submit", e => {
+    e.preventDefault();
+    const q = $("query").value.trim();
+    if (!q) return;
+    if (/[가-힣]/.test(q)) searchKo(q); else loadDetail(q);
+  });
+
+  async function searchKo(q) {
+    const found = [...koNames].find(([, ko]) => ko === q); // 이미 목록에 나온 이름이면 호출 없이 번호로
+    if (found) return loadDetail(String(found[0]));
+    const my = ++token;
+    draw("card-detail", "포켓몬 정보", el("p", "loading", "한글 이름 찾는 중…"));
+    try {
+      const id = await findKoId(q);
+      if (my !== token) return;
+      if (id === null) throw new Error("그런 이름이 없어요");
+      loadDetail(String(id));
+    } catch (err) {
+      if (my !== token) return;
+      draw("card-detail", "포켓몬 정보", el("p", "error", `😢 "${q}" 포켓몬을 찾지 못했어요. (${err.message})`),
+        el("p", "sub", "영어 이름(pikachu)이나 번호(25)로 검색해 보세요."));
+    }
+  }
+
+  loadList();
+  loadDetail("1"); // 첫 화면에는 1번 포켓몬
+</script>
+</body>
+</html>

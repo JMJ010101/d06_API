@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>도시 검색</title>
+<style>
+  body { font-family: system-ui, "Malgun Gothic", sans-serif; background: #eef3f9; margin: 0; padding: 24px 16px; color: #1c2430; }
+  main { max-width: 460px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 16px; }
+  form { display: flex; gap: 8px; margin-bottom: 16px; }
+  input { flex: 1; min-width: 0; font-size: 18px; padding: 10px; border: 1px solid #c5cdd8; border-radius: 8px; }
+  button { font-size: 18px; padding: 10px 16px; border: 0; border-radius: 8px; background: #2563eb; color: #fff; cursor: pointer; }
+  .card { background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,.08); margin-bottom: 12px; }
+  .card h2 { font-size: 15px; margin: 0 0 8px; color: #5b6776; }
+  .big { font-size: 40px; font-weight: 700; margin: 0; }
+  .sub { font-size: 14px; color: #5b6776; margin: 4px 0 0; }
+  .loading { color: #5b6776; margin: 0; }
+  .error { color: #b3261e; margin: 0; }
+  .dust { display: flex; gap: 12px; }
+  .dust > div { flex: 1; border-radius: 12px; padding: 12px; text-align: center; }
+  .dust b { display: block; font-size: 22px; margin-top: 4px; }
+  .g-good { background: #dbeafe; } .g-normal { background: #dcfce7; }
+  .g-bad { background: #ffedd5; } .g-worst { background: #fee2e2; }
+  .api-box { margin-top: 16px; background: #fff8e1; border: 1px solid #f0d98a; border-radius: 12px; padding: 14px; font-size: 13px; word-break: break-all; }
+  .api-box code { display: block; margin: 4px 0; }
+  .api-box p { margin: 10px 0 0; }
+  footer { margin-top: 12px; font-size: 12px; color: #5b6776; text-align: center; }
+</style>
+</head>
+<body>
+<main>
+  <h1>🔎 도시 날씨 · 미세먼지</h1>
+
+  <form id="form">
+    <input id="city" type="text" value="Busan" placeholder="도시 이름 (예: Busan, Tokyo, 대구)" aria-label="도시 이름" required>
+    <button type="submit">검색</button>
+  </form>
+
+  <div class="card" id="place-card"><p class="loading">도시를 찾는 중…</p></div>
+  <div class="card" id="temp-card"><h2>🌡️ 지금 기온</h2><p class="loading">기온 불러오는 중…</p></div>
+  <div class="card" id="dust-card"><h2>😷 미세먼지 (환경부 기준)</h2><p class="loading">미세먼지 불러오는 중…</p></div>
+
+  <div class="api-box">
+    <strong>🔌 이 화면이 쓰는 API</strong>
+    <p>1️⃣ 도시 → 좌표</p><code id="url-geo"></code>
+    <a id="link-geo" href="#" target="_blank" rel="noopener">새 탭에서 원본 JSON 보기</a>
+    <p>2️⃣ 좌표 → 기온</p><code id="url-weather"></code>
+    <a id="link-weather" href="#" target="_blank" rel="noopener">새 탭에서 원본 JSON 보기</a>
+    <p>3️⃣ 좌표 → 미세먼지</p><code id="url-air"></code>
+    <a id="link-air" href="#" target="_blank" rel="noopener">새 탭에서 원본 JSON 보기</a>
+  </div>
+
+  <footer>Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a> · 미세먼지 등급은 한국 환경부 기준</footer>
+</main>
+
+<script>
+  const API = {
+    geocoding: "https://geocoding-api.open-meteo.com/v1/search",   // 🔌 1번: 도시 이름 → 위도·경도
+    forecast: "https://api.open-meteo.com/v1/forecast",            // 🔌 2번: 좌표 → 기온
+    airQuality: "https://air-quality-api.open-meteo.com/v1/air-quality", // 🔌 3번: 좌표 → pm10, pm2_5
+  };
+
+  // 환경부 기준: [좋음 최대, 보통 최대, 나쁨 최대] 넘으면 매우나쁨 (㎍/㎥)
+  const LIMITS = { pm10: [30, 80, 150], pm2_5: [15, 35, 75] };
+  const GRADES = [["좋음", "g-good"], ["보통", "g-normal"], ["나쁨", "g-bad"], ["매우나쁨", "g-worst"]];
+
+  function grade(kind, value) {
+    const i = LIMITS[kind].findIndex(max => value <= max);
+    return GRADES[i === -1 ? 3 : i];
+  }
+
+  const $ = id => document.getElementById(id);
+  function showUrl(key, url) {
+    $("url-" + key).textContent = url;
+    $("link-" + key).href = url;
+  }
+
+  async function getJson(url) {
+    const res = await fetch(url); // 🔌 API 호출
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return res.json();
+  }
+
+  async function loadTemp(lat, lon) {
+    const url = `${API.forecast}?latitude=${lat}&longitude=${lon}&current=temperature_2m&timezone=auto`;
+    showUrl("weather", url);
+    $("temp-card").innerHTML = `<h2>🌡️ 지금 기온</h2><p class="loading">기온 불러오는 중…</p>`;
+    try {
+      const { current } = await getJson(url);
+      $("temp-card").innerHTML = `<h2>🌡️ 지금 기온</h2>
+        <p class="big">${current.temperature_2m}°C</p>
+        <p class="sub">기준 시각: ${current.time.replace("T", " ")}</p>`;
+    } catch (err) {
+      $("temp-card").innerHTML = `<h2>🌡️ 지금 기온</h2><p class="error">😢 기온을 불러오지 못했어요. (${err.message})</p>`;
+    }
+  }
+
+  async function loadDust(lat, lon) {
+    const url = `${API.airQuality}?latitude=${lat}&longitude=${lon}&current=pm10,pm2_5&timezone=auto`;
+    showUrl("air", url);
+    $("dust-card").innerHTML = `<h2>😷 미세먼지 (환경부 기준)</h2><p class="loading">미세먼지 불러오는 중…</p>`;
+    try {
+      const { current } = await getJson(url);
+      if (current.pm10 == null || current.pm2_5 == null) throw new Error("이 지역은 측정값이 없어요");
+      const box = (label, kind, value) => {
+        const [text, cls] = grade(kind, value);
+        return `<div class="${cls}">${label}<b>${text}</b><span class="sub">${value} ㎍/㎥</span></div>`;
+      };
+      $("dust-card").innerHTML = `<h2>😷 미세먼지 (환경부 기준)</h2>
+        <div class="dust">${box("미세먼지 PM10", "pm10", current.pm10)}${box("초미세먼지 PM2.5", "pm2_5", current.pm2_5)}</div>
+        <p class="sub">기준 시각: ${current.time.replace("T", " ")} (모델 예측값이라 실제 측정소 값과 다를 수 있어요)</p>`;
+    } catch (err) {
+      $("dust-card").innerHTML = `<h2>😷 미세먼지 (환경부 기준)</h2><p class="error">😢 미세먼지를 불러오지 못했어요. (${err.message})</p>`;
+    }
+  }
+
+  async function search(name) {
+    const geoUrl = `${API.geocoding}?name=${encodeURIComponent(name)}&count=1&language=ko`;
+    showUrl("geo", geoUrl);
+    $("place-card").innerHTML = `<p class="loading">도시를 찾는 중…</p>`;
+    try {
+      const data = await getJson(geoUrl);
+      if (!data.results || !data.results.length) throw new Error("그런 도시를 못 찾았어요");
+      const place = data.results[0];
+      const lat = place.latitude;   // 1번 응답의 값 → 2번·3번 주소에 들어감
+      const lon = place.longitude;  // 1번 응답의 값 → 2번·3번 주소에 들어감
+      $("place-card").innerHTML = `<p class="big" style="font-size:26px">📍 ${place.name}</p>
+        <p class="sub">${[place.admin1, place.country].filter(Boolean).join(", ")} · 위도 ${lat}, 경도 ${lon}</p>`;
+      loadTemp(lat, lon);
+      loadDust(lat, lon);
+    } catch (err) {
+      $("place-card").innerHTML = `<p class="error">😢 ${err.message}. 다른 이름으로 다시 검색해 보세요.</p>`;
+      $("temp-card").innerHTML = `<h2>🌡️ 지금 기온</h2><p class="sub">도시를 먼저 찾아야 해요.</p>`;
+      $("dust-card").innerHTML = `<h2>😷 미세먼지 (환경부 기준)</h2><p class="sub">도시를 먼저 찾아야 해요.</p>`;
+    }
+  }
+
+  $("form").addEventListener("submit", e => {
+    e.preventDefault();
+    const name = $("city").value.trim();
+    if (name) search(name);
+  });
+  search($("city").value);
+</script>
+</body>
+</html>
