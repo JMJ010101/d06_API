@@ -1,0 +1,3 @@
+[build]
+  command = "mkdir -p dist && cp d6-api/poke.html dist/index.html"
+  publish = "dist"
